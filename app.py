@@ -8,19 +8,18 @@ from datetime import datetime, timedelta
 # Set page config
 st.set_page_config(page_title="Demand Forecasting System", layout="wide")
 
-# Function to safely load data
+# Function to generate random data
 @st.cache_data
-def load_data():
-    try:
-        data = pd.read_csv('train.csv')
-        data['InvoiceDate'] = pd.to_datetime(data['InvoiceDate'])
-        return data
-    except FileNotFoundError:
-        st.error("Data file not found. Please check the file path.")
-        return None
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        return None
+def generate_random_data(stock_codes, n_entries, start_date):
+    np.random.seed(42)
+    data = {
+        'StockCode': np.random.choice(stock_codes, n_entries),
+        'InvoiceDate': [start_date + timedelta(days=int(np.random.uniform(1, 365))) for _ in range(n_entries)],
+        'Quantity': np.random.randint(1, 100, size=n_entries)
+    }
+    df = pd.DataFrame(data)
+    df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+    return df
 
 # Function to safely load models
 def load_models():
@@ -56,7 +55,6 @@ def generate_forecast(model, model_name, n_weeks, last_date):
             return forecast['yhat'].values
         elif model_name == 'lstm':
             # Assuming the LSTM model needs the last few values for prediction
-            # You might need to adjust this based on your actual LSTM model's requirements
             try:
                 last_sequence = model.layers[0].input_shape[1]  # Get the sequence length the model expects
             except:
@@ -81,12 +79,17 @@ def generate_forecast(model, model_name, n_weeks, last_date):
 
 # Main app
 def main():
-    st.title("Demand Forecasting System")
+    st.title("Demand Forecasting System (Random Data Version)")
     
-    # Load data
-    data = load_data()
-    if data is None:
-        st.stop()
+    # User input for random data generation
+    st.sidebar.header("Random Data Settings")
+    n_entries = st.sidebar.slider("Number of Data Entries", min_value=100, max_value=5000, value=1000)
+    n_stock_codes = st.sidebar.slider("Number of Unique Stock Codes", min_value=1, max_value=50, value=5)
+    start_date = st.sidebar.date_input("Start Date for Data", value=datetime(2023, 1, 1))
+    
+    # Generate stock codes and data
+    stock_codes = [f'ST{str(i).zfill(3)}' for i in range(1, n_stock_codes + 1)]
+    data = generate_random_data(stock_codes, n_entries, start_date)
     
     # Load models
     models = load_models()
@@ -94,12 +97,11 @@ def main():
         st.error("No models could be loaded. Please check model files.")
         st.stop()
     
-    # Sidebar
+    # Sidebar for forecast settings
     st.sidebar.header("Forecast Settings")
     
     # User inputs
-    available_stock_codes = sorted(data['StockCode'].unique())
-    selected_stock = st.sidebar.selectbox("Choose a Stock Code", options=available_stock_codes)
+    selected_stock = st.sidebar.selectbox("Choose a Stock Code", options=stock_codes)
     n_weeks = st.sidebar.slider("Forecast Horizon (Weeks)", 1, 15, 4)
     
     # Filter data for selected stock and create a proper time series
