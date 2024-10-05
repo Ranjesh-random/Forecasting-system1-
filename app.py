@@ -12,7 +12,7 @@ st.set_page_config(page_title="Demand Forecasting System", layout="wide")
 @st.cache_data
 def load_data():
     try:
-        data = pd.read_csv(r"C:\Sales forcasting\trans_data.csv", low_memory=False)
+        data = pd.read_csv(r'C:\Sales forcasting\train.csv', low_memory=False)
         data['InvoiceDate'] = pd.to_datetime(data['InvoiceDate'])
         return data
     except FileNotFoundError:
